@@ -1,0 +1,58 @@
+@startuml DownloadSequence
+
+actor User
+participant "DownloadUI" as UI
+participant "RendererProcess" as Renderer
+participant "MainProcess" as Main
+participant "JgDownloader" as Downloader
+database "StreamTape" as Stream
+
+== Download Initialization ==
+User -> UI: Click "Add Download"
+UI -> Renderer: addDownload()
+Renderer -> Main: IPC: add-download
+Main -> Downloader: getDownloadLink(url)
+
+== URL Processing ==
+Downloader -> Stream: getData(url, GET)
+Stream --> Downloader: HTML Response
+Downloader -> Downloader: isStreamTapeButton()
+Downloader -> Downloader: getStreamTapeFrameUrlString()
+Downloader -> Stream: getData(frameUrl, POST)
+Stream --> Downloader: Embed Page
+Downloader -> Downloader: Extract Video Token & URL
+
+== Download Process ==
+Downloader --> Main: Download URL
+Main -> Main: downloadFile(url, path)
+Main -> UI: updateProgress(0)
+
+== Download Progress ==
+loop Until Download Complete
+    Main -> Stream: Stream Download
+    Stream --> Main: File Chunks
+    Main -> UI: updateProgress(progress)
+end
+
+== User Controls ==
+User -> UI: Click "Pause"
+UI -> Renderer: pauseDownload()
+Renderer -> Main: IPC: pause-download
+Main -> Main: handlePauseClick()
+
+User -> UI: Click "Resume"
+UI -> Renderer: resumeDownload()
+Renderer -> Main: IPC: resume-download
+Main -> Main: handleResumeClick()
+
+User -> UI: Click "Cancel"
+UI -> Renderer: cancelDownload()
+Renderer -> Main: IPC: cancel-download
+Main -> Main: handleCancelClick()
+
+== Download Completion ==
+Main -> UI: updateProgress(100)
+UI -> UI: updateStatus("Completed")
+UI -> UI: updateActionButton("View")
+
+@enduml

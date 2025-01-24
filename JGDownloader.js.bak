@@ -1,0 +1,318 @@
+/**
+ * Represents a JgDownloader class that provides methods for downloading content from various sources.
+ */
+const axios = require('axios');
+const { JSDOM } = require('jsdom');
+
+class JGDownloader {
+
+    constructor(mainWindow) {
+        this.mainWindow = mainWindow;
+    }
+
+    async getData(urlString, requestType) {
+        let response = {};
+        let userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.59';
+        try {
+            console.log('Get Data Url: ' + urlString);
+            console.log('Request Type: ' + requestType);
+            switch (requestType) {
+                case 0:
+                    response = await axios.post(urlString, {}, {
+                        headers: {
+                            "User-Agent": userAgent,
+                            "Dnt": "1",
+                            "Referer": "https://jav.guru/",
+                            "Sec-Fetch-Dest": "iframe",
+                            "Sec-Fetch-Mode": "navigate",
+                            "Connection": "keep-alive",
+                        }
+                    });
+                    break;
+                case 1:
+                    response = await axios.get(urlString, {
+                        headers: {
+                            "User-Agent": userAgent,
+                            "Dnt": "1",
+                            "Connection": "keep-alive",
+                        }
+                    });
+                    break;
+                case 2:
+                    response = await axios.head(urlString, {
+                        headers: {
+                            "User-Agent": userAgent,
+                            "Dnt": "1",
+                            "Cache-Control": "no-cache"
+                        }
+                    });
+                    break;
+            }
+        } catch (error) {
+            console.log('Get Data Error');
+            console.log(error);
+        }
+        return response;
+    }
+
+    isHTML(text) {
+        // HTML 태그를 찾는 정규 표현식
+        const htmlRegex = /<([A-Za-z][A-Za-z0-9]*)\b[^>]*>(.*?)<\/\1>/;
+
+        // DOCTYPE 선언을 찾는 정규 표현식
+        const doctypeRegex = /<!DOCTYPE html>/i;
+
+        // HTML 주석을 찾는 정규 표현식
+        const commentRegex = /<!--[\s\S]*?-->/;
+
+        // 위의 패턴 중 하나라도 일치하면 HTML로 간주
+        return htmlRegex.test(text) || doctypeRegex.test(text) || commentRegex.test(text);
+    }
+
+    isURL(text) {
+        const urlPattern = new RegExp('^(https?:\\/\\/)?' + // 프로토콜
+            '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // 도메인명
+            '((\\d{1,3}\\.){3}\\d{1,3}))' + // IP 주소
+            '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // 포트 및 경로
+            '(\\?[;&a-z\\d%_.~+=-]*)?' + // 쿼리 스트링
+            '(\\#[-a-z\\d_]*)?$', 'i'); // 프래그먼트 식별자
+        return !!urlPattern.test(text);
+    }
+
+    isStreamTapeButton(htmlString) {
+        const dom = new JSDOM(htmlString);
+        const doc = dom.window.document;
+        const tagElements = doc.querySelectorAll("a");
+        for (let i = 0; i < tagElements.length; i++) {
+            const tagHtml = tagElements[i].innerHTML;
+            if (tagHtml.includes("STREAM ST")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    getStreamTapeFrameUrlString(htmlString) {
+        const dom = new JSDOM(htmlString);
+        const document = dom.window.document;
+        const tagElements = document.querySelectorAll("a");
+        for (let i = 0; i < tagElements.length; i++) {
+            const tagHtml = tagElements[i].innerHTML;
+            if (tagHtml.includes("STREAM ST")) {
+                const idString = tagElements[i].getAttribute("data-localize");
+                const extraElement = document.getElementById("wp-btn-iframe-js-extra");
+                if (extraElement) {
+                    const extraHtmlString = extraElement.innerHTML;
+                    const extraHtmlStringArray = extraHtmlString.split("\n");
+                    const extraElementString = extraHtmlStringArray.find(line => line.includes(idString));
+                    if (extraElementString) {
+                        let extraDictString = extraElementString;
+                        extraDictString = extraDictString.replace(`var ${idString} = `, "");
+                        extraDictString = extraDictString.replace("};", "}");
+                        try {
+                            const extraDict = JSON.parse(extraDictString);
+                            if (extraDict.iframe_url) {
+                                const decodedUrl = Buffer.from(extraDict.iframe_url, 'base64').toString('utf-8');
+                                return decodedUrl;
+                            }
+                        } catch (error) {
+                            console.log(error);
+                        }
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+    /**
+     * StreamTape DR 문자열을 가져옵니다.
+     * @param {string} urlString - URL 문자열
+     * @returns {string} 변환된 DR 문자열 또는 빈 문자열
+     */
+    getStreamTapeDRString(urlString) {
+        const match = urlString.match(/(?<=dd=)[^&]*/);
+        if (match) {
+            const ddString = match[0];
+            return ddString.split('').reverse().join('');
+        }
+        return '';
+    }
+
+    /**
+     * StreamTape 비디오 토큰을 추출합니다.
+     * @param {string} htmlString - HTML 문자열
+     * @returns {string} 추출된 토큰 또는 빈 문자열
+     */
+    getStreamTapeVideoTokenString(htmlString) {
+        const TOKEN_PATTERN = /document\.getElementById\('norobotlink'\)\.innerHTML\s*=\s*'.*token=([A-Za-z0-9_\-]+)'/;
+        const match = htmlString.match(TOKEN_PATTERN);
+        return match ? match[1] : '';
+    }
+
+    /**
+     * StreamTape 비디오 URL 정보를 추출합니다.
+     * @param {string} htmlString - HTML 문자열
+     * @returns {string} 추출된 URL 또는 빈 문자열
+     */
+    getStreamTapeVideoInfixString(htmlString) {
+        const URL_PATTERN = /<div id="ideoooolink"[^>]*>([^<]+)/;
+        const match = htmlString.match(URL_PATTERN);
+        if (match && match[1]) {
+            const urlString = `https:/${match[1]}`;
+            try {
+                const url = new URL(urlString);
+                url.searchParams.delete('token');
+                return url.toString();
+            } catch (error) {
+                console.error('URL parsing failed:', error.message);
+                return '';
+            }
+        }
+        return '';
+    }
+
+    /**
+     * StreamTape 비디오 요청 URL을 생성합니다.
+     * @param {string} infixString - URL 기본 문자열
+     * @param {string} tokenString - 토큰 문자열
+     * @returns {string} 최종 요청 URL
+     */
+    getStreamTapeVideoRequestUrlString(infixString, tokenString) {
+        return `${infixString}&token=${tokenString}`;
+    }
+
+    /**
+     * StreamTape URL을 가져옵니다.
+     * @param {string} htmlString - HTML 문자열
+     * @returns {Promise<string>} StreamTape URL 또는 빈 문자열
+     */
+    async getStreamTapeUrlString(htmlString) {
+        try {
+            const frameUrlString = await this.getStreamTapeFrameUrlString(htmlString);
+            if (frameUrlString !== '') {
+                if (frameUrlString.includes('https://jav.guru/searcho/')) {
+                    const drString = this.getStreamTapeDRString(frameUrlString);
+                    if (drString !== '') {
+                        return `https://jav.guru/searcho/?dr=${drString}`;
+                    }
+                }
+                return frameUrlString;
+            }
+        } catch (error) {
+            console.error('StreamTape URL retrieval failed:', error.message);
+        }
+        return '';
+    }
+
+    /**
+     * 테스트를 실행합니다.
+     * @returns {Promise<void>}
+     */
+    async doTest() {
+        const TEST_URL = 'https://streamtape.xyz/v/dqpYpzVXygIPRo/';
+        try {
+            const response = await this.getData(TEST_URL, 1);
+            console.log(response);
+        } catch (error) {
+            console.error('Test failed:', error.message);
+        }
+    }
+
+    /**
+     * 다운로드 링크를 가져옵니다.
+     * @param {string} urlString - 대상 URL
+     * @returns {Promise<Object>} 다운로드 정보 객체
+     */
+    async getDownloadLink(urlString) {
+        const TARGET_URL = 'https://jav.guru/625427/mida-008-taming-a-cold-sugar-baby-revenge-thrusting-and-sloppy-kisses-turn-her-into-my-cum-covered-maid-overnight-miyashita-rena/';
+        urlString = TARGET_URL;
+
+        try {
+            // Step 1: Get main page HTML
+            const response = await this.getData(urlString, 1);
+            if (!(Object.keys(response).length !== 0 && this.isHTML(response.data))) {
+                throw new Error('Could not retrieve main page HTML');
+            }
+            console.log('Step 1 Success: Main page HTML retrieved');
+
+            // Step 2: Check StreamTape button
+            const htmlString = response.data;
+            if (!this.isStreamTapeButton(htmlString)) {
+                throw new Error('StreamTape button not found');
+            }
+            console.log('Step 2 Success: StreamTape button confirmed');
+
+            // Step 3: Extract StreamTape iframe URL
+            const streamTapeUrlString = await this.getStreamTapeUrlString(htmlString);
+            if (!this.isURL(streamTapeUrlString)) {
+                throw new Error('Could not extract StreamTape iframe URL');
+            }
+            console.log('Step 3 Success: StreamTape iframe URL:', streamTapeUrlString);
+
+            // Step 4: Get StreamTape embed page
+            const embedResponse = await this.getData(streamTapeUrlString, 0);
+            if (!(Object.keys(embedResponse).length !== 0 && this.isHTML(embedResponse.data))) {
+                throw new Error('Could not retrieve StreamTape embed page');
+            }
+            console.log('Step 4 Success: StreamTape embed page retrieved');
+
+            // Step 5: Check redirected URL
+            const redirectedUrl = embedResponse.request._redirectable?._currentUrl;
+            if (!redirectedUrl) {
+                throw new Error('Could not find redirected URL');
+            }
+            console.log('Step 5 Success: Redirected URL:', redirectedUrl);
+
+            // Step 6: Get StreamTape video page
+            const streamTapeVideoUrlString = redirectedUrl.replace('/e/', '/v/');
+            const videoResponse = await this.getData(streamTapeVideoUrlString, 1);
+            if (!(Object.keys(videoResponse).length !== 0 && this.isHTML(videoResponse.data))) {
+                throw new Error('Could not retrieve StreamTape video page');
+            }
+            console.log('Step 6 Success: StreamTape video page retrieved');
+
+            // Step 7: Extract download token and URL information
+            const streamTapeVideoHtmlString = videoResponse.data;
+            const streamTapeVideoTokenString = this.getStreamTapeVideoTokenString(streamTapeVideoHtmlString);
+            const streamTapeVideoInfixString = this.getStreamTapeVideoInfixString(streamTapeVideoHtmlString);
+            const streamTapeVideoRequestUrlString = this.getStreamTapeVideoRequestUrlString(
+                streamTapeVideoInfixString,
+                streamTapeVideoTokenString
+            );
+
+            if (
+                streamTapeVideoTokenString === '' ||
+                streamTapeVideoInfixString === '' ||
+                !this.isURL(streamTapeVideoRequestUrlString)
+            ) {
+                throw new Error('Could not extract download token and URL information');
+            }
+            console.log('Step 7 Success: Download information extracted');
+            console.log('Token:', streamTapeVideoTokenString);
+            console.log('Infix URL:', streamTapeVideoInfixString);
+            console.log('Final Request URL:', streamTapeVideoRequestUrlString);
+
+            // Step 8: Get final download URL
+            const downloadResponse = await this.getData(streamTapeVideoRequestUrlString, 2);
+            const downloadUrl = downloadResponse.request._redirectable?._currentUrl;
+            if (!(Object.keys(downloadResponse).length !== 0 && downloadUrl)) {
+                throw new Error('Could not retrieve final download URL');
+            }
+            console.log('Step 8 Success: Final download URL retrieved');
+
+            // Complete: Return final download URL
+            console.log('Final Download URL:', downloadUrl);
+            return {
+                step: 9,
+                url: downloadUrl
+            };
+        } catch (error) {
+            console.error('Download link retrieval failed:', error.message);
+            return { step: error.step || 0 };
+        }
+    }
+
+}
+
+module.exports = JGDownloader;
