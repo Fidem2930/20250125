@@ -1,0 +1,50 @@
+@startuml
+
+participant "index.html" as UI
+participant "renderer.js" as Renderer
+participant "preload.js" as Preload
+participant "main.js" as Main
+participant "JGDownloader.js" as Downloader
+
+== App Initialization ==
+Main -> Main: app.whenReady()
+Main -> Main: createMainWindow()
+Main -> UI: loadFile('index.html')
+UI -> Renderer: load renderer.js
+Preload -> Preload: contextBridge.exposeInMainWorld()
+
+== Download Flow ==
+UI -> Renderer: Button Click Event (add/pause/resume/cancel/download)
+Renderer -> Preload: window.electron.send('action', action)
+Preload -> Main: ipcMain.on('action')
+Main -> Main: handleButtonClick(action)
+alt action == 'add'
+    Main -> Main: handleAddDownload()
+else action == 'pause'  
+    Main -> Main: handlePauseDownload()
+else action == 'resume'
+    Main -> Main: handleResumeDownload() 
+else action == 'cancel'
+    Main -> Main: handleCancelDownload()
+else action == 'download'
+    Main -> Main: handleStartDownload()
+end
+Main -> Preload: webContents.send('status')
+Preload -> Renderer: ipcRenderer.on('status')
+Renderer -> UI: Update UI
+
+== Download Process Steps ==
+Downloader -> Downloader: getData(url, requestType)
+activate Downloader
+Downloader -> Downloader: makeRequest(url, method, options)
+Downloader -> Downloader: getRequestMethod(type)
+Downloader -> Downloader: getDefaultHeaders()
+deactivate Downloader
+
+== Status Updates ==
+Main -> Preload: webContents.send('status', downloadStatus)
+Preload -> Renderer: ipcRenderer.on('status')
+Renderer -> UI: console.log('다운로드 상태:', status)
+Renderer -> UI: Update Download Status UI
+
+@enduml
