@@ -3,13 +3,13 @@ const path = require('path');
 const { app, BrowserWindow, ipcMain } = require('electron');
 const JGDownloader = require('./JGDownloader.js');
 
-let mainWindow;
-let downloader;
+let mainWindow = null;
+let downloader = null;
 let isCanceled = false;
 let isPaused = false;
 
 /*
-    https://jav.guru/630272/dldss-385-a-busty-married-woman-stuck-in-a-sexless-marriage-falls-in-pure-love-with-the-younger-handsome-therapist-at-a-women-only-escort-service-yuko-ono/
+https://jav.guru/630272/dldss-385-a-busty-married-woman-stuck-in-a-sexless-marriage-falls-in-pure-love-with-the-younger-handsome-therapist-at-a-women-only-escort-service-yuko-ono/
 */
 
 async function createMainWindow() {
@@ -43,10 +43,10 @@ app.on('activate', () => {
     }
 });
 
-ipcMain.on('action', (event, action) => {
+ipcMain.on('action', (event, action, data) => {
     switch (action) {
-        case 'add':
-            handleAddDownload();
+        case 'add':            
+            handleAddDownload(data);
             break;
         case 'pause':
             handlePauseDownload();
@@ -61,34 +61,54 @@ ipcMain.on('action', (event, action) => {
             handleStartDownload();
             break;
         default:
-            console.warn('[Download] 알 수 없는 액션:', { action });
+            break;
     }
 });
 
-function handleAddDownload() {
-    console.info('[Download] 다운로드 항목 추가');
-    mainWindow.webContents.send('status', '다운로드 항목 추가');
+async function handleAddDownload(data) {
+    /*
+    console.info(`Add Download: ${data.url}`);
+    mainWindow.webContents.send('status', '다운로드 추가됨');
+    */
+
+    if (!downloader) {
+        console.log('Downloader is not initialized');
+        return;
+    }
+
+    if (!downloader.checkUrl(data.url)) {
+        console.log('Invalid URL');
+        return;
+    }
+
+    const download = await downloader.getDownloadUrl(data.url);
+    if (!download.result) {
+        console.log(`Failure Step ${download.step}`);
+        return;
+    }
+
+    downloader.startDownlaod(download.url, download.filename);
 }
 
 function handlePauseDownload() {
     isPaused = true;
-    console.info('[Download] 다운로드 일시정지');
+    console.info('Pause Download');;
     mainWindow.webContents.send('status', '다운로드 일시정지됨');
 }
 
 function handleResumeDownload() {
     isPaused = false;
-    console.info('[Download] 다운로드 재개');
+    console.info('Resume Download');
     mainWindow.webContents.send('status', '다운로드 재개됨');
 }
 
 function handleCancelDownload() {
     isCanceled = true;
-    console.warn('[Download] 다운로드 취소');
+    console.warn('Cancel Download');
     mainWindow.webContents.send('status', '다운로드 취소됨');
 }
 
 function handleStartDownload() {
-    console.info('[Download] 다운로드 시작');
+    console.info('Start Download');
     mainWindow.webContents.send('status', '다운로드 시작됨');
 }

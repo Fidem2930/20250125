@@ -233,7 +233,7 @@ class JGDownloader {
     }
 
     async getDownloadUrl(url) {
-        
+
         // Step 1: Get Page Data
         const pageData = await this.getData(url, 1);
         if (!pageData.result) {
@@ -375,7 +375,7 @@ class JGDownloader {
         return {
             step: 11,
             result: true,
-            title: title.title,
+            filename: title.title,
             url: streamTapeVideoRequestUrl
         };
     }

@@ -13,12 +13,11 @@ function handleButtonClick(action) {
 }
 
 // 버튼 클릭 이벤트 리스너
-// addButton.addEventListener('click', () => handleButtonClick('add'));
 addButton.addEventListener(
     'click',
     () => {
         const url = urlInput.value;
-        window.electron.send('action', { action, url });
+        window.electron.send('action', 'add', { url });
     }
 );
 pauseButton.addEventListener('click', () => handleButtonClick('pause'));
