@@ -1,18 +1,12 @@
-// Electron 관련 모듈 불러오기
-
 const fs = require('fs');
 const path = require('path');
 const { app, BrowserWindow, ipcMain } = require('electron');
-const JGDownloader = require('./JGDownloader.js.bak');
+const JGDownloader = require('./JGDownloader.js');
 
-// 전역 변수 선언
 let mainWindow;
 let isCanceled = false;
 let isPaused = false;
 
-/**
- * 메인 윈도우를 생성하는 함수
- */
 function createMainWindow() {
     mainWindow = new BrowserWindow({
         width: 1800,
@@ -26,30 +20,24 @@ function createMainWindow() {
 
     mainWindow.loadFile('index.html');
     mainWindow.webContents.openDevTools();
+
+    const downloader = new JGDownloader(mainWindow);
 }
 
-// 앱이 준비되면 윈도우 생성
 app.whenReady().then(createMainWindow);
 
-// 앱 종료 이벤트 핸들러
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
     }
 });
 
-// 앱 활성화 이벤트 핸들러
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
         createMainWindow();
     }
 });
 
-/**
- * IPC 이벤트 핸들러: 'action' 이벤트 처리
- * @param {Event} event - IPC 이벤트 객체
- * @param {string} action - 수행할 액션
- */
 ipcMain.on('action', (event, action) => {
     switch (action) {
         case 'add':
@@ -76,9 +64,11 @@ function handleAddDownload() {
     console.info('[Download] 다운로드 항목 추가');
     mainWindow.webContents.send('status', '다운로드 항목 추가');
 
+    /*
     const downloder = new JGDownloader(mainWindow);
-    const url  = downloder.getDownloadLink('https://jav.guru/625427/mida-008-taming-a-cold-sugar-baby-revenge-thrusting-and-sloppy-kisses-turn-her-into-my-cum-covered-maid-overnight-miyashita-rena/');
+    const url = downloder.getDownloadLink('https://jav.guru/625427/mida-008-taming-a-cold-sugar-baby-revenge-thrusting-and-sloppy-kisses-turn-her-into-my-cum-covered-maid-overnight-miyashita-rena/');
     console.log(url);
+    */
 }
 
 function handlePauseDownload() {
@@ -104,12 +94,6 @@ function handleStartDownload() {
     mainWindow.webContents.send('status', '다운로드 시작됨');
 }
 
-/**
- * 파일 다운로드 함수
- * @param {string} fileUrl - 다운로드할 파일의 URL
- * @param {string} filePath - 저장될 파일 경로
- * @returns {Promise<void>}
- */
 async function downloadFile(fileUrl, filePath) {
     try {
         const response = await axios({
