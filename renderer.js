@@ -1,3 +1,5 @@
+const urlInput = document.getElementById('urlInput');
+
 // 버튼 요소들 가져오기
 const addButton = document.getElementById('addButton');
 const pauseButton = document.getElementById('pauseButton');
@@ -11,7 +13,14 @@ function handleButtonClick(action) {
 }
 
 // 버튼 클릭 이벤트 리스너
-addButton.addEventListener('click', () => handleButtonClick('add'));
+// addButton.addEventListener('click', () => handleButtonClick('add'));
+addButton.addEventListener(
+    'click',
+    () => {
+        const url = urlInput.value;
+        window.electron.send('action', { action, url });
+    }
+);
 pauseButton.addEventListener('click', () => handleButtonClick('pause'));
 resumeButton.addEventListener('click', () => handleButtonClick('resume'));
 cancelButton.addEventListener('click', () => handleButtonClick('cancel'));
