@@ -9,7 +9,6 @@ class JGDownloader {
     constructor(mainWindow) {
         this.mainWindow = mainWindow;
         this.downloads = new Map();
-
         this.startDownlaod();
     }
 
@@ -19,34 +18,46 @@ class JGDownloader {
         try {
             switch (type) {
                 case 0:
-                    response = await axios.post(url, {}, {
-                        headers: {
-                            "User-Agent": userAgent,
-                            "Dnt": "1",
-                            "Referer": "https://jav.guru/",
-                            "Sec-Fetch-Dest": "iframe",
-                            "Sec-Fetch-Mode": "navigate",
-                            "Connection": "keep-alive",
+                    response = await axios.post(
+                        url,
+                        {
+
+                        },
+                        {
+                            headers: {
+                                "User-Agent": userAgent,
+                                "Dnt": "1",
+                                "Referer": "https://jav.guru/",
+                                "Sec-Fetch-Dest": "iframe",
+                                "Sec-Fetch-Mode": "navigate",
+                                "Connection": "keep-alive",
+                            }
                         }
-                    });
+                    );
                     break;
                 case 1:
-                    response = await axios.get(url, {
-                        headers: {
-                            "User-Agent": userAgent,
-                            "Dnt": "1",
-                            "Connection": "keep-alive",
+                    response = await axios.get(
+                        url,
+                        {
+                            headers: {
+                                "User-Agent": userAgent,
+                                "Dnt": "1",
+                                "Connection": "keep-alive",
+                            }
                         }
-                    });
+                    );
                     break;
                 case 2:
-                    response = await axios.head(url, {
-                        headers: {
-                            "User-Agent": userAgent,
-                            "Dnt": "1",
-                            "Cache-Control": "no-cache"
+                    response = await axios.head(
+                        url,
+                        {
+                            headers: {
+                                "User-Agent": userAgent,
+                                "Dnt": "1",
+                                "Cache-Control": "no-cache"
+                            }
                         }
-                    });
+                    );
                     break;
             }
         } catch (error) {
@@ -79,6 +90,27 @@ class JGDownloader {
     }
 
     // JavGuru 관련
+    getTitle(html) {
+        try {
+            const dom = new JSDOM(html);
+            const document = dom.window.document;
+            const titleElement = document.querySelector('meta[name="og:title"]');
+            if (titleElement) {
+                const title = titleElement.getAttribute('content');
+                return {
+                    result: true,
+                    title: title
+                };
+            }
+        }
+        catch  (error) {
+            console.error(error);
+        }
+        return {
+            result: false
+        };
+    }
+
     checkStreamTapeButton(text) {
         const dom = new JSDOM(text);
         const doc = dom.window.document;
@@ -106,48 +138,6 @@ class JGDownloader {
         };
     }
 
-    /*
-    getStreamTapeFrameUrl(html) {
-        const dom = new JSDOM(html);
-        const document = dom.window.document;
-        const tagElements = document.querySelectorAll("a");
-        for (let i = 0; i < tagElements.length; i++) {
-            const tagHtml = tagElements[i].innerHTML;
-            if (tagHtml.includes("STREAM ST")) {
-                const idString = tagElements[i].getAttribute("data-localize");
-                const extraElement = document.getElementById("wp-btn-iframe-js-extra");
-                if (extraElement) {
-                    const extraHtmlString = extraElement.innerHTML;
-                    const extraHtmlStringArray = extraHtmlString.split("\n");
-                    const extraElementString = extraHtmlStringArray.find(line => line.includes(idString));
-                    if (extraElementString) {
-                        let extraDictString = extraElementString;
-                        extraDictString = extraDictString.replace(`var ${idString} = `, "");
-                        extraDictString = extraDictString.replace("};", "}");
-                        try {
-                            const extraDict = JSON.parse(extraDictString);
-                            if (extraDict.iframe_url) {
-                                const decodedUrl = Buffer.from(extraDict.iframe_url, 'base64').toString('utf-8');
-                                return {
-                                    result: true,
-                                    url: decodedUrl
-                                };
-                            }
-                        } catch (error) {
-                            return {
-                                result: false
-                            };
-                        }
-                    }
-                }
-            }
-        }
-        return {
-            result: false
-        };
-    }
-    */
-
     getStreamTapeVideoToken(html) {
         const TOKEN_PATTERN = /document\.getElementById\('norobotlink'\)\.innerHTML\s*=\s*'.*token=([A-Za-z0-9_\-]+)'/;
         const match = html.match(TOKEN_PATTERN);
@@ -174,43 +164,48 @@ class JGDownloader {
     getStreamTapeVideoRequestUrl(infixString, tokenString) {
         return `${infixString}&token=${tokenString}`;
     }
+
     getStreamTapeFrameUrl(html) {
-        const dom = new JSDOM(html);
-        const document = dom.window.document;
-        const tagElements = document.querySelectorAll("a");
-        const extraElement = document.getElementById("wp-btn-iframe-js-extra");
+        try {
+            const dom = new JSDOM(html);
+            const document = dom.window.document;
+            const tagElements = document.querySelectorAll("a");
+            const extraElement = document.getElementById("wp-btn-iframe-js-extra");
 
-        if (!extraElement) {
-            return { result: false };
-        }
+            if (!extraElement) {
+                return { result: false };
+            }
 
-        const extraHtmlString = extraElement.innerHTML;
-        const extraHtmlStringArray = extraHtmlString.split("\n");
-        const idStringRegex = /data-localize="([^"]+)"/;
+            const extraHtmlString = extraElement.innerHTML;
+            const extraHtmlStringArray = extraHtmlString.split("\n");
+            const idStringRegex = /data-localize="([^"]+)"/;
 
-        for (let i = 0; i < tagElements.length; i++) {
-            const tagHtml = tagElements[i].innerHTML;
-            if (tagHtml.includes("STREAM ST")) {
-                const match = tagElements[i].outerHTML.match(idStringRegex);
-                if (match) {
-                    const idString = match[1];
-                    const extraElementString = extraHtmlStringArray.find(line => line.includes(idString));
-                    if (extraElementString) {
-                        let extraDictString = extraElementString.replace(`var ${idString} = `, "").replace("};", "}");
-                        try {
-                            const extraDict = JSON.parse(extraDictString);
-                            if (extraDict.iframe_url) {
-                                const decodedUrl = Buffer.from(extraDict.iframe_url, 'base64').toString('utf-8');
-                                return { result: true, url: decodedUrl };
+            for (let i = 0; i < tagElements.length; i++) {
+                const tagHtml = tagElements[i].innerHTML;
+                if (tagHtml.includes("STREAM ST")) {
+                    const match = tagElements[i].outerHTML.match(idStringRegex);
+                    if (match) {
+                        const idString = match[1];
+                        const extraElementString = extraHtmlStringArray.find(line => line.includes(idString));
+                        if (extraElementString) {
+                            let extraDictString = extraElementString.replace(`var ${idString} = `, "").replace("};", "}");
+                            try {
+                                const extraDict = JSON.parse(extraDictString);
+                                if (extraDict.iframe_url) {
+                                    const decodedUrl = Buffer.from(extraDict.iframe_url, 'base64').toString('utf-8');
+                                    return { result: true, url: decodedUrl };
+                                }
+                            } catch (error) {
+                                return { result: false };
                             }
-                        } catch (error) {
-                            return { result: false };
                         }
                     }
                 }
             }
         }
-
+        catch (error) {
+            console.error(error);
+        }
         return { result: false };
     }
 
@@ -237,9 +232,8 @@ class JGDownloader {
         };
     }
 
-    async getDownloadUrl() {
-        const url = 'https://jav.guru/629439/apgh-030-after-school-beautiful-girl-h-slim-and-fair-skinned-french-quarter-student-noa-gentle-girl-gets-wild-on-top-hotel-stay-hidden-camera-date-momosa-noa/';
-
+    async getDownloadUrl(url) {
+        
         // Step 1: Get Page Data
         const pageData = await this.getData(url, 1);
         if (!pageData.result) {
@@ -351,11 +345,9 @@ class JGDownloader {
 
         console.log('Step 9 Success');
 
-        // Step 10: Get StreamTape Video Url
-        const streamTapeVideoToken = this.getStreamTapeVideoToken(streamTapeVideoHtml);
-        const streamTapeVideoInfix = this.getStreamTapeVideoInfix(streamTapeVideoHtml);
-        const streamTapeVideoRequestUrl = this.getStreamTapeVideoRequestUrl(streamTapeVideoInfix, streamTapeVideoToken)
-        if (!this.checkUrl(streamTapeVideoRequestUrl)) {
+        // Step 10: Get StreamTape Title
+        const title = this.getTitle(streamTapeVideoHtml);
+        if (!title.result) {
             console.log('Step 10 Failed');
             return {
                 step: 10,
@@ -364,11 +356,26 @@ class JGDownloader {
         }
 
         console.log('Step 10 Success');
+
+        // Step 11: Get StreamTape Video Url
+        const streamTapeVideoToken = this.getStreamTapeVideoToken(streamTapeVideoHtml);
+        const streamTapeVideoInfix = this.getStreamTapeVideoInfix(streamTapeVideoHtml);
+        const streamTapeVideoRequestUrl = this.getStreamTapeVideoRequestUrl(streamTapeVideoInfix, streamTapeVideoToken)
+        if (!this.checkUrl(streamTapeVideoRequestUrl)) {
+            console.log('Step 11 Failed');
+            return {
+                step: 11,
+                result: false
+            };
+        }
+
+        console.log('Step 11 Success');
         console.log('URL: ', streamTapeVideoRequestUrl);
 
         return {
-            step: 10,
+            step: 11,
             result: true,
+            title: title.title,
             url: streamTapeVideoRequestUrl
         };
     }
@@ -377,6 +384,7 @@ class JGDownloader {
     startDownlaod(url, path) {
         const downloadId = uuid.v4();
         console.log('Download ID: ', downloadId);
+        console.log('Download Path: ', path);
         const downloadPromise = new Promise(
             (resolve, reject) => {
                 const cancelToken = axios.CancelToken.source();
@@ -388,12 +396,25 @@ class JGDownloader {
                         cancelToken: cancelToken.token
                     }
                 ).then(
-                    response => {
+                    (response) => {
                         const fileStream = fs.createWriteStream(path);
                         response.data.pipe(fileStream);
 
+                        let downloadedSize = 0;
+                        const totalSize = response.headers['content-length'];
+                        console.log('Total Size: ', totalSize);
+
+                        response.data.on(
+                            'data',
+                            (chunk) => {
+                                downloadedSize += chunk.length;
+                                const progress = (downloadedSize / totalSize) * 100;
+                                console.log(`Download Progress: ${progress.toFixed(2)}%`);
+                            }
+                        );
+
                         fileStream.on(
-                            'finish', 
+                            'finish',
                             () => {
                                 console.log('Download Complete');
                                 this.downloads.delete(downloadId);
@@ -403,7 +424,7 @@ class JGDownloader {
 
                         fileStream.on(
                             'error',
-                            (error) => {                                
+                            (error) => {
                                 console.log('Download Error');
                                 this.downloads.delete(downloadId);
                                 reject(error);
@@ -421,7 +442,7 @@ class JGDownloader {
                         );
                     }
                 ).catch(
-                    error => {
+                    (error) => {
                         reject(error);
                     }
                 )

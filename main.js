@@ -4,10 +4,15 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const JGDownloader = require('./JGDownloader.js');
 
 let mainWindow;
+let downloader;
 let isCanceled = false;
 let isPaused = false;
 
-function createMainWindow() {
+/*
+    https://jav.guru/630272/dldss-385-a-busty-married-woman-stuck-in-a-sexless-marriage-falls-in-pure-love-with-the-younger-handsome-therapist-at-a-women-only-escort-service-yuko-ono/
+*/
+
+async function createMainWindow() {
     mainWindow = new BrowserWindow({
         width: 1800,
         height: 1000,
@@ -21,8 +26,7 @@ function createMainWindow() {
     mainWindow.loadFile('index.html');
     mainWindow.webContents.openDevTools();
 
-    const downloader = new JGDownloader(mainWindow);
-    //downloader.getDownloadUrl();
+    downloader = new JGDownloader(mainWindow);
 }
 
 app.whenReady().then(createMainWindow);
