@@ -26,10 +26,20 @@ cancelButton.addEventListener('click', () => handleButtonClick('cancel'));
 downloadButton.addEventListener('click', () => handleButtonClick('download'));
 
 // IPC 응답 리스너
-window.electron.receive('status', (status) => {
-    console.log('다운로드 상태:', status);
-    // 여기서 UI 업데이트 로직을 추가할 수 있습니다
-});
+window.electron.receive(
+    'status',
+    (status) => {
+        console.log('다운로드 상태:', status);
+        // 여기서 UI 업데이트 로직을 추가할 수 있습니다
+    }
+);
+
+window.electron.receive(
+    'downloadChanged',
+    (downloadId) => {
+        console.log('다운로드 변경:', downloadId);
+    }
+);
 
 // 액션 전송 예시
 function sendAction(action) {

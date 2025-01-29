@@ -66,14 +66,14 @@ ipcMain.on('action', (event, action, data) => {
 });
 
 async function handleAddDownload(data) {
-    /*
-    console.info(`Add Download: ${data.url}`);
-    mainWindow.webContents.send('status', '다운로드 추가됨');
-    */
-
     if (!downloader) {
-        console.log('Downloader is not initialized');
+        console.log('Downloader Initialization Failure');
         return;
+    }
+
+    // for Test
+    if (data.url === '') {
+        data.url = 'https://jav.guru/630272/dldss-385-a-busty-married-woman-stuck-in-a-sexless-marriage-falls-in-pure-love-with-the-younger-handsome-therapist-at-a-women-only-escort-service-yuko-ono/';
     }
 
     if (!downloader.checkUrl(data.url)) {

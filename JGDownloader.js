@@ -7,9 +7,39 @@ const { JSDOM } = require('jsdom');
 class JGDownloader {
 
     constructor(mainWindow) {
-        this.mainWindow = mainWindow;
-        this.downloads = new Map();
-        this.startDownlaod();
+        this._mainWindow = mainWindow;
+        this._downloads = new Map();
+    }
+
+    getDownload(downloadId) {
+        return this._downloads.get(downloadId);
+    }
+
+    addDownload(downloadId, data) {
+        this._downloads.set(downloadId, data);
+        this._notifyDownloadChanged();
+    }
+
+    updateDownload(downloadId, data) {
+        const _data = this._downloads.get(downloadId);
+        if (_data) {
+            Object.assign(_data, data);
+            this._notifyDownloadChanged();
+        }
+    }
+
+    deleteDownload(downloadId) {
+        this._downloads.delete(downloadId);
+        this._notifyDownloadChanged();
+
+    }
+
+    _notifyDownloadChanged() {
+        this._mainWindow.webContents.send('downloadChanged', '_downloadId');
+
+        for (const [_downloadId, _data] of this._downloads.entries()) {
+            console.log(_downloadId, _data);
+        }
     }
 
     async getData(url, type) {
@@ -103,7 +133,7 @@ class JGDownloader {
                 };
             }
         }
-        catch  (error) {
+        catch (error) {
             console.error(error);
         }
         return {
@@ -410,6 +440,13 @@ class JGDownloader {
                                 downloadedSize += chunk.length;
                                 const progress = (downloadedSize / totalSize) * 100;
                                 console.log(`Download Progress: ${progress.toFixed(2)}%`);
+
+                                const data = this.getDownload(downloadId);
+                                if (data) {
+                                    data.process = progress;
+                                    data.status = 'Download';
+                                    this.updateDownload(downloadId, data);
+                                }
                             }
                         );
 
@@ -417,7 +454,7 @@ class JGDownloader {
                             'finish',
                             () => {
                                 console.log('Download Complete');
-                                this.downloads.delete(downloadId);
+                                this.deleteDownload(downloadId);
                                 resolve();
                             }
                         );
@@ -426,20 +463,22 @@ class JGDownloader {
                             'error',
                             (error) => {
                                 console.log('Download Error');
-                                this.downloads.delete(downloadId);
+                                this.deleteDownload(downloadId);
                                 reject(error);
                             }
                         );
 
-                        this.downloads.set(
+                        this.addDownload(
                             downloadId,
                             {
                                 promise: downloadPromise,
                                 cancel: cancelToken.cancel,
                                 fileStream: fileStream,
+                                process: 0,
                                 status: 'Download'
                             }
                         );
+
                     }
                 ).catch(
                     (error) => {
@@ -452,30 +491,33 @@ class JGDownloader {
     }
 
     cancelDownload(downloadId) {
-        const download = this.downloads.get(downloadId);
-        if (download && download.status !== 'Cancel') {
-            download.cancel();
-            download.fileStream.destroy();
-            download.status = 'Cancel';
-            this.downloads.delete(downloadId);
+        const data = this.getDownload(downloadId);
+        if (data && data.status !== 'Cancel') {
+            data.cancel();
+            data.fileStream.destroy();
+            data.status = 'Cancel';
+            data.process = 0;
+            this.deleteDownload(downloadId);
             console.log(`Download Cancel: ${downloadId}`);
         }
     }
 
     pauseDownload(downloadId) {
-        const download = this.downloads.get(downloadId);
-        if (download && download.status === 'Download') {
-            download.fileStream.pause();
-            download.status = 'Pause';
+        const data = this.getDownload(downloadId);
+        if (data && data.status === 'Download') {
+            data.fileStream.pause();
+            data.status = 'Pause';
+            this.updateDownload(downloadId, data);
             console.log(`Download Pause: ${downloadId}`);
         }
     }
 
     resumeDownload(downloadId) {
-        const download = this.downloads.get(downloadId);
-        if (download && download.status === 'Pause') {
-            download.fileStream.resume();
-            download.status = 'Download';
+        const data = this.getDownload(downloadId);
+        if (data && data.status === 'Pause') {
+            data.fileStream.resume();
+            data.status = 'Download';
+            this.updateDownload(downloadId, data);
             console.log(`Download Resume: ${downloadId}`);
         }
     }
