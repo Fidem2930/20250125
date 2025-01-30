@@ -26,7 +26,9 @@ async function createMainWindow() {
     mainWindow.loadFile('index.html');
     mainWindow.webContents.openDevTools();
 
+    // for Test
     downloader = new JGDownloader(mainWindow);
+
 }
 
 app.whenReady().then(createMainWindow);
@@ -71,7 +73,7 @@ async function handleAddDownload(data) {
         return;
     }
 
-    // for Test
+    /*
     if (data.url === '') {
         data.url = 'https://jav.guru/630272/dldss-385-a-busty-married-woman-stuck-in-a-sexless-marriage-falls-in-pure-love-with-the-younger-handsome-therapist-at-a-women-only-escort-service-yuko-ono/';
     }
@@ -87,7 +89,19 @@ async function handleAddDownload(data) {
         return;
     }
 
-    downloader.startDownlaod(download.url, download.filename);
+    console.log('Download Filename: ', download.filename);
+    console.log('Download URL: ', download.url);
+    */
+
+    /*
+        Download Filename:  DLDSS-385.mp4
+        Download URL:  https://streamtape.xyz/get_video?id=DPg7MyjD2qiky3J&expires=1738303915&ip=F0SQKRWOE19XKxR&token=M6XFMszzL-NG
+    */
+
+    const url = 'https://streamtape.xyz/get_video?id=DPg7MyjD2qiky3J&expires=1738303915&ip=F0SQKRWOE19XKxR&token=M6XFMszzL-NG';
+    const filename = 'DLDSS-385.mp4';
+
+    downloader.startDownlaod(url, filename, filename);
 }
 
 function handlePauseDownload() {

@@ -9,6 +9,11 @@ class JGDownloader {
     constructor(mainWindow) {
         this._mainWindow = mainWindow;
         this._downloads = new Map();
+        this._updateInterval = setInterval(
+            () => {
+                this._notifyDownloadChanged();
+            }, 1000
+        );
     }
 
     getDownload(downloadId) {
@@ -16,29 +21,36 @@ class JGDownloader {
     }
 
     addDownload(downloadId, data) {
+        console.log('Add Download: ', downloadId);
         this._downloads.set(downloadId, data);
-        this._notifyDownloadChanged();
     }
 
     updateDownload(downloadId, data) {
         const _data = this._downloads.get(downloadId);
         if (_data) {
             Object.assign(_data, data);
-            this._notifyDownloadChanged();
         }
     }
 
     deleteDownload(downloadId) {
         this._downloads.delete(downloadId);
-        this._notifyDownloadChanged();
-
     }
 
     _notifyDownloadChanged() {
-        this._mainWindow.webContents.send('downloadChanged', '_downloadId');
-
-        for (const [_downloadId, _data] of this._downloads.entries()) {
-            console.log(_downloadId, _data);
+        const downloads = Array.from(this._downloads.entries())
+            .map(
+                ([id, data]) => {
+                    return {
+                        id: id,
+                        status: data.status,
+                        process: data.process,
+                        filename: data.filename,
+                        path: data.path
+                    }
+                }
+            );
+        if (downloads.length > 0) {
+            this._mainWindow.webContents.send('downloadChanged', downloads);
         }
     }
 
@@ -411,7 +423,7 @@ class JGDownloader {
     }
 
     // 다운로드 관련
-    startDownlaod(url, path) {
+    startDownlaod(url, path, filename) {
         const downloadId = uuid.v4();
         console.log('Download ID: ', downloadId);
         console.log('Download Path: ', path);
@@ -439,7 +451,7 @@ class JGDownloader {
                             (chunk) => {
                                 downloadedSize += chunk.length;
                                 const progress = (downloadedSize / totalSize) * 100;
-                                console.log(`Download Progress: ${progress.toFixed(2)}%`);
+                                // console.log(`Download Progress: ${progress.toFixed(2)}%`);
 
                                 const data = this.getDownload(downloadId);
                                 if (data) {
@@ -475,7 +487,9 @@ class JGDownloader {
                                 cancel: cancelToken.cancel,
                                 fileStream: fileStream,
                                 process: 0,
-                                status: 'Download'
+                                status: 'Download',
+                                filename: filename,
+                                path: path
                             }
                         );
 

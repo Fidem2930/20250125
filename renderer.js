@@ -36,8 +36,9 @@ window.electron.receive(
 
 window.electron.receive(
     'downloadChanged',
-    (downloadId) => {
-        console.log('다운로드 변경:', downloadId);
+    (downloads) => {
+        console.log('downloadChanged: ');
+        console.log(downloads);
     }
 );
 
