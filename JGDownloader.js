@@ -451,8 +451,6 @@ class JGDownloader {
                             (chunk) => {
                                 downloadedSize += chunk.length;
                                 const progress = (downloadedSize / totalSize) * 100;
-                                // console.log(`Download Progress: ${progress.toFixed(2)}%`);
-
                                 const data = this.getDownload(downloadId);
                                 if (data) {
                                     data.process = progress;
@@ -487,12 +485,12 @@ class JGDownloader {
                                 cancel: cancelToken.cancel,
                                 fileStream: fileStream,
                                 process: 0,
-                                status: 'Download',
+                                status: 'Add',
                                 filename: filename,
                                 path: path
                             }
                         );
-
+                        this._notifyDownloadChanged();
                     }
                 ).catch(
                     (error) => {

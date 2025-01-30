@@ -100,8 +100,9 @@ async function handleAddDownload(data) {
 
     const url = 'https://streamtape.xyz/get_video?id=DPg7MyjD2qiky3J&expires=1738303915&ip=F0SQKRWOE19XKxR&token=M6XFMszzL-NG';
     const filename = 'DLDSS-385.mp4';
+    const path = 'DLDSS-385.mp4';
 
-    downloader.startDownlaod(url, filename, filename);
+    downloader.startDownlaod(url, path, filename);
 }
 
 function handlePauseDownload() {

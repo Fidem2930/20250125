@@ -10,7 +10,6 @@ const downloadButton = document.getElementById('downloadButton');
 // 리스너 관리를 위한 Map
 const buttonListeners = new Map();
 
-// 버튼 비활성화 함수
 function disableButton(button, duration = 1000) {
     button.disabled = true;
     setTimeout(() => {
@@ -105,25 +104,55 @@ function delItem(id) {
     }
 }
 
-// 버튼 클릭 이벤트 리스너
 addButton.addEventListener(
     'click',
     () => {
         disableButton(addButton);
-
-        /*
         const url = urlInput.value;
         window.electron.send('action', 'add', { url });
-        */
+    }
+);
 
-        addItem('1111', 'Test.mp4');
+window.electron.receive(
+    'status',
+    (status) => {
+        console.log('다운로드 상태:', status);
+        // 여기서 UI 업데이트 로직을 추가할 수 있습니다
+    }
+);
+
+window.electron.receive(
+    'downloadChanged',
+    (downloads) => {
+        console.log('downloadChanged: ');
+        for (const download of downloads) {
+            switch (download.status) {
+                case 'Add':
+                    console.log(`[${download.id}] Add`);
+                    addItem(download.id, download.filename);
+                    break;
+                case 'Cancel':
+                    break;
+                case 'Download':
+                    console.log(`[${download.id}] Download: ${download.process}%`);
+                    const progressBar = document.querySelector(`#progress-${download.id}`);
+                    if (progressBar) {
+                        progressBar.style.width = `${download.process}%`;
+                        progressBar.setAttribute('aria-valuenow', download.process);
+                    }
+                    break;
+                case 'Pause':
+                    break;
+                default:
+                    break;
+            }
+        }
     }
 );
 
 pauseButton.addEventListener('click', () => {
     disableButton(pauseButton);
     console.log('Pause Button Clicked');
-    delItem('1111');
 });
 
 resumeButton.addEventListener('click', () => {
@@ -141,24 +170,6 @@ downloadButton.addEventListener('click', () => {
     console.log('Download Button Clicked');
 });
 
-// IPC 응답 리스너
-window.electron.receive(
-    'status',
-    (status) => {
-        console.log('다운로드 상태:', status);
-        // 여기서 UI 업데이트 로직을 추가할 수 있습니다
-    }
-);
-
-window.electron.receive(
-    'downloadChanged',
-    (downloads) => {
-        console.log('downloadChanged: ');
-        console.log(downloads);
-    }
-);
-
-// 액션 전송 예시
 function sendAction(action) {
     window.electron.send('action', action);
 }
