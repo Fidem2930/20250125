@@ -7,23 +7,139 @@ const resumeButton = document.getElementById('resumeButton');
 const cancelButton = document.getElementById('cancelButton');
 const downloadButton = document.getElementById('downloadButton');
 
-// 버튼 클릭 이벤트 처리 함수
-function handleButtonClick(action) {
-    window.electron.send('action', action);
+// 리스너 관리를 위한 Map
+const buttonListeners = new Map();
+
+// 버튼 비활성화 함수
+function disableButton(button, duration = 1000) {
+    button.disabled = true;
+    setTimeout(() => {
+        button.disabled = false;
+    }, duration);
+}
+
+function addItem(id, title) {
+    const downloadList = document.querySelector('tbody');
+    const newDownloadItem = document.createElement('tr');
+
+    // ID 속성 추가
+    newDownloadItem.id = `download-${id}`;
+    newDownloadItem.innerHTML = `
+        <td class="text-start align-middle text-truncate" style="max-width: 200px; id="title-${id}">
+            ${title}
+        </td>
+        <td class="align-middle">
+            <span class="badge bg-warning text-dark" id="status-${id}">Pending</span>
+        </td>
+        <td class="align-middle">
+            <div class="progress">
+                <div class="progress-bar bg-warning" role="progressbar" 
+                    id="progress-${id}"
+                    style="width: 30%;" 
+                    aria-valuenow="30" 
+                    aria-valuemin="0" 
+                    aria-valuemax="100">
+                </div>
+            </div>
+        </td>
+        <td class="align-middle">
+            <button class="btn btn-outline-warning btn-sm" id="btn-${id}">Start</button>
+        </td>
+    `;
+    downloadList.appendChild(newDownloadItem);
+
+    const button = document.querySelector(`#btn-${id}`);
+    const clickHandler = () => {
+
+        const item = document.querySelector(`#download-${id}`);
+        if (!item)
+            return;
+
+        const status = document.querySelector(`#status-${id}`);
+        const progressBar = document.querySelector(`#progress-${id}`);
+        if (!status || !progressBar)
+            return;
+
+        if (button.textContent === 'Start') {
+            button.textContent = 'Pause';
+            button.classList.replace('btn-outline-warning', 'btn-outline-primary');
+            status.textContent = 'Downloading';
+            status.classList.replace('bg-warning', 'bg-primary');
+            progressBar.classList.replace('bg-warning', 'bg-primary');
+            // 다운로드 시작 액션
+            window.electron.send('action', 'start', { id });
+        } else if (button.textContent === 'Pause') {
+            button.textContent = 'Resume';
+            button.classList.replace('btn-outline-primary', 'btn-outline-secondary');
+            status.textContent = 'Paused';
+            status.classList.replace('bg-primary', 'bg-secondary');
+            progressBar.classList.replace('bg-primary', 'bg-secondary');
+            // 다운로드 일시정지 액션
+            window.electron.send('action', 'pause', { id });
+        } else {
+            button.textContent = 'Pause';
+            button.classList.replace('btn-outline-secondary', 'btn-outline-primary');
+            status.textContent = 'Downloading';
+            status.classList.replace('bg-secondary', 'bg-primary');
+            progressBar.classList.replace('bg-secondary', 'bg-primary');
+            // 다운로드 재개 액션
+            window.electron.send('action', 'resume', { id });
+        }
+    };
+
+    button.addEventListener('click', clickHandler);
+    buttonListeners.set(id, clickHandler);
+}
+
+function delItem(id) {
+    const item = document.querySelector(`#download-${id}`);
+    const button = document.querySelector(`#btn-${id}`);
+    
+    if (item && button) {
+        const listener = buttonListeners.get(id);
+        if (listener) {
+            button.removeEventListener('click', listener);
+            buttonListeners.delete(id);
+        }
+        item.remove();
+    }
 }
 
 // 버튼 클릭 이벤트 리스너
 addButton.addEventListener(
     'click',
     () => {
+        disableButton(addButton);
+
+        /*
         const url = urlInput.value;
         window.electron.send('action', 'add', { url });
+        */
+
+        addItem('1111', 'Test.mp4');
     }
 );
-pauseButton.addEventListener('click', () => handleButtonClick('pause'));
-resumeButton.addEventListener('click', () => handleButtonClick('resume'));
-cancelButton.addEventListener('click', () => handleButtonClick('cancel'));
-downloadButton.addEventListener('click', () => handleButtonClick('download'));
+
+pauseButton.addEventListener('click', () => {
+    disableButton(pauseButton);
+    console.log('Pause Button Clicked');
+    delItem('1111');
+});
+
+resumeButton.addEventListener('click', () => {
+    disableButton(resumeButton);
+    console.log('Resume Button Clicked');
+});
+
+cancelButton.addEventListener('click', () => {
+    disableButton(cancelButton);
+    console.log('Cancel Button Clicked');
+});
+
+downloadButton.addEventListener('click', () => {
+    disableButton(downloadButton);
+    console.log('Download Button Clicked');
+});
 
 // IPC 응답 리스너
 window.electron.receive(
